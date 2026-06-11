@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kamus Sambung Kata</title>
+<link rel="icon" type="image/webp" href="https://tr.rbxcdn.com/180DAY-153fbf607a2fe806ae19354cc00c6318/150/150/Image/Webp/noFilter">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --bg: #080808;
+  --surface: #111111;
+  --surface2: #181818;
+  --border: rgba(255,255,255,0.07);
+  --border-active: rgba(255,255,255,0.3);
+  --text: #f0f0f0;
+  --muted: #555;
+  --accent: #ffffff;
+  --accent2: #aaaaaa;
+  --highlight: #e8ff5a;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+body::after {
+  content: ''; position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: 0.5;
+}
+
+.blobs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.blob { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.12; animation: float 14s ease-in-out infinite; }
+.blob-1 { width: 500px; height: 500px; background: #333; top: -150px; left: -100px; }
+.blob-2 { width: 400px; height: 400px; background: #222; top: -80px; right: -120px; animation-delay: -5s; }
+.blob-3 { width: 350px; height: 350px; background: #2a2a2a; bottom: 10%; left: 30%; animation-delay: -9s; }
+
+@keyframes float { 0%,100%{transform:translate(0,0)} 33%{transform:translate(15px,-15px)} 66%{transform:translate(-10px,10px)} }
+
+.wrapper { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* Corner logo */
+.corner-logo { position: fixed; top: 20px; left: 20px; width: 56px; height: 56px; border-radius: 14px; border: 1px solid var(--border); z-index: 10; transition: transform 0.2s, opacity 0.2s; opacity: 0.85; }
+.corner-logo:hover { transform: scale(1.08); opacity: 1; }
+
+/* Header */
+header { text-align: center; padding: 48px 0 28px; animation: fadeDown 0.6s ease both; }
+@keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+.logo-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px; padding: 5px 14px;
+  font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+}
+.logo-badge::before { content:''; width:5px; height:5px; background:#fff; border-radius:50%; opacity:0.4; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.1} }
+
+h1 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(26px, 5vw, 46px);
+  font-weight: 900; line-height: 1; letter-spacing: -2px;
+  color: #fff;
+}
+
+.tagline { margin-top: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; }
+.tagline-handle { color: #fff; font-weight: 700; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 2px 8px; }
+.tagline-desc { color: var(--muted); margin-left: 6px; }
+
+.social-links { display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.social-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--accent2); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;
+}
+.social-btn:hover { border-color: rgba(255,255,255,0.2); color: #fff; transform: translateY(-2px); }
+
+/* Panel */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); animation: fadeUp 0.6s 0.1s ease both; }
+
+/* Tabs */
+.filter-tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--surface2); border-radius: 12px; padding: 4px; flex-wrap: wrap; }
+.tab { flex: 1; min-width: 80px; padding: 9px 8px; border: none; background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.25s; text-align: center; white-space: nowrap; }
+.tab.active { background: #fff; color: #000; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.tab:not(.active):hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+/* Input */
+.input-row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
+.input-row.two { grid-template-columns: 1fr 1fr; }
+.input-wrap { position: relative; }
+.input-label { position: absolute; top: -8px; left: 12px; background: var(--surface); padding: 0 5px; font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; z-index: 1; }
+
+input[type=text] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+input[type=text]:focus { border-color: rgba(255,255,255,0.25); box-shadow: 0 0 0 2px rgba(255,255,255,0.06); }
+input[type=text]::placeholder { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+/* Stats */
+.stats { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 8px; font-size: 11px; font-family: 'Space Mono', monospace; }
+.badge-white { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--accent2); }
+.badge-yellow { background: rgba(232,255,90,0.07); border: 1px solid rgba(232,255,90,0.15); color: var(--highlight); }
+
+.divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+/* History */
+.history-wrap { margin-bottom: 14px; }
+.history-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.history-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.history-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  color: var(--accent2); cursor: pointer; transition: all 0.15s;
+}
+.history-chip:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+.history-chip .del { color: var(--muted); font-size: 12px; margin-left: 2px; }
+.history-chip .del:hover { color: #fff; }
+
+/* Abjad */
+.abjad-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.abjad-btn { width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); border-radius: 7px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.abjad-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.2); color: var(--text); }
+.abjad-btn.active { background: #fff; border-color: #fff; color: #000; }
+.abjad-btn:disabled { opacity: 0.2; cursor: default; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.toolbar-left { display: flex; align-items: center; gap: 8px; }
+.result-count { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+.result-count span { color: #fff; font-weight: 700; }
+
+.toolbar-right { display: flex; gap: 6px; align-items: center; }
+
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.sort-btn:hover, .sort-btn.active { border-color: rgba(255,255,255,0.2); color: #fff; }
+
+.fav-toggle {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.fav-toggle.active { background: rgba(232,255,90,0.1); border-color: rgba(232,255,90,0.3); color: var(--highlight); }
+
+.copy-all-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;
+  background: rgba(232,255,90,0.08); border: 1px solid rgba(232,255,90,0.2);
+  border-radius: 8px; color: var(--highlight); font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.copy-all-btn:hover { background: rgba(232,255,90,0.15); }
+.copy-all-btn.copied { color: #4ade80; border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.08); }
+
+/* Results */
+#results { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 10px; min-height: 60px; }
+.empty-state { grid-column:1/-1; text-align:center; padding:48px 20px; color:var(--muted); font-family:'Space Mono',monospace; font-size:12px; }
+.empty-icon { font-size:28px; margin-bottom:10px; }
+
+.item {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.18s;
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px;
+  color: var(--text); position: relative; overflow: hidden;
+  animation: itemIn 0.2s ease both; word-break: break-word;
+}
+.item:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+.item.favorited { border-color: rgba(232,255,90,0.25); }
+.item .word-text { position: relative; z-index: 1; }
+.item .word-text .highlight { color: var(--highlight); font-weight: 800; }
+.item .word-meta { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); margin-top:5px; }
+.item .fav-star { position: absolute; top: 10px; right: 10px; font-size: 14px; opacity: 0; transition: opacity 0.15s; cursor: pointer; z-index: 2; }
+.item:hover .fav-star { opacity: 1; }
+.item.favorited .fav-star { opacity: 1; }
+.item .rare-badge { display: inline-block; font-family:'Space Mono',monospace; font-size:9px; color:#f87171; background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2); border-radius:4px; padding:1px 5px; margin-top:4px; }
+
+@keyframes itemIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* Favorit Tab */
+#favPanel { display: none; }
+.fav-empty { text-align:center; padding:40px; color:var(--muted); font-family:'Space Mono',monospace; font-size:12px; }
+
+/* Footer */
+footer { text-align: center; padding: 28px 0 0; animation: fadeUp 0.6s 0.2s ease both; }
+.footer-note { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+.footer-note a { color: var(--accent2); text-decoration:none; }
+
+/* Mic button */
+.mic-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted); cursor: pointer;
+  transition: all 0.2s; font-size: 18px; flex-shrink: 0;
+}
+.mic-btn:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+.mic-btn.listening { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); animation: micPulse 1s infinite; }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0.3)} 50%{box-shadow:0 0 0 8px rgba(248,113,113,0)} }
+
+.input-with-mic { display: flex; gap: 8px; align-items: center; }
+.input-with-mic input { flex: 1; }
+
+/* Comeback */
+.comeback-input-wrap { margin-bottom: 20px; }
+.comeback-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; margin-bottom: 12px;
+  animation: itemIn 0.25s ease both;
+}
+.comeback-rank {
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 1px; margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.comeback-rank span { color: var(--highlight); font-weight: 700; }
+.comeback-word {
+  font-family: 'DM Sans', sans-serif; font-weight: 900;
+  font-size: 28px; letter-spacing: -1px; color: #fff;
+  margin-bottom: 4px; cursor: pointer;
+}
+.comeback-word:hover { color: var(--highlight); }
+.comeback-word .highlight { color: var(--highlight); }
+.comeback-score-bar {
+  display: flex; gap: 10px; align-items: center; margin: 10px 0 8px;
+}
+.comeback-bar-bg {
+  flex: 1; height: 4px; background: rgba(255,255,255,0.06);
+  border-radius: 4px; overflow: hidden;
+}
+.comeback-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, #4ade80, #e8ff5a);
+  transition: width 0.5s ease;
+}
+.comeback-score-label {
+  font-family: 'Space Mono', monospace; font-size: 11px;
+  color: var(--muted); white-space: nowrap;
+}
+.comeback-score-label b { color: #fff; }
+.comeback-meta {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+}
+.comeback-badge {
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  padding: 3px 8px; border-radius: 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+}
+.comeback-badge.good { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.2); color: #4ade80; }
+.comeback-badge.warn { background: rgba(232,255,90,0.08); border-color: rgba(232,255,90,0.2); color: var(--highlight); }
+.comeback-badge.bad  { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.2); color: #f87171; }
+.comeback-empty { text-align:center; padding:48px 20px; color:var(--muted); font-family:'Space Mono',monospace; font-size:12px; }
+.comeback-loading { text-align:center; padding:32px; color:var(--muted); font-family:'Space Mono',monospace; font-size:11px; }
+.comeback-mode-row { display:flex; gap:8px; margin-bottom:16px; }
+.comeback-mode-btn {
+  flex:1; padding:8px; border-radius:10px; border:1px solid var(--border);
+  background:var(--surface2); color:var(--muted); font-family:'DM Sans',sans-serif;
+  font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;
+}
+.comeback-mode-btn.active { background:rgba(232,255,90,0.1); border-color:rgba(232,255,90,0.3); color:var(--highlight); }
+  header { padding: 44px 0 20px; }
+  .panel { padding: 16px; border-radius: 16px; }
+  .input-row.two { grid-template-columns: 1fr; }
+  #results { grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); }
+  .corner-logo { width: 44px; height: 44px; top: 10px; left: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="wrapper">
+  <header>
+    <img src="https://tr.rbxcdn.com/180DAY-153fbf607a2fe806ae19354cc00c6318/150/150/Image/Webp/noFilter" alt="Logo" class="corner-logo">
+    <div class="logo-badge">Sambung Kata Edition</div>
+    <h1>KAMUS SAMBUNG KATA</h1>
+    <p class="tagline">
+      <span class="tagline-handle">@mavisssjoy</span>
+      <span class="tagline-desc">· kamus referensi bahasa indonesia</span>
+    </p>
+    <div class="social-links">
+      <a href="https://www.tiktok.com/@mavisssjoy?_r=1&_t=ZS-973MUJ9uZIz" target="_blank" class="social-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.74a4.85 4.85 0 01-1.01-.05z"/></svg>
+        @mavisssjoy
+      </a>
+      <a href="https://www.roblox.com/share?code=6d936908a835984e91044f253133a300&type=Profile&source=ProfileShare&stamp=1780965399258" target="_blank" class="social-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M4.679 0L0 19.821 19.821 24 24 4.179zm9.893 13.322l-4.545-1.088 1.087-4.544 4.545 1.087z"/></svg>
+        @mavissjoy
+      </a>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="filter-tabs">
+      <button class="tab active" data-mode="awalan">Awalan</button>
+      <button class="tab" data-mode="akhiran">Akhiran</button>
+      <button class="tab" data-mode="keduanya">Awal+Akhir</button>
+      <button class="tab" data-mode="comeback">⚡ Comeback</button>
+      <button class="tab" data-mode="favorit">⭐ Favorit</button>
+    </div>
+
+    <!-- Input row -->
+    <div id="inputRow">
+      <div class="input-with-mic">
+        <div class="input-wrap" style="flex:1">
+          <span class="input-label">Awalan</span>
+          <input type="text" id="q-awalan" placeholder="contoh: a, ber, me...">
+        </div>
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Cari pakai suara">🎤</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="statsBar" style="margin-top:14px">
+      <div class="badge badge-white" id="statTotal">⟳ Memuat...</div>
+      <div class="badge badge-white">Database Gabungan</div>
+      <div class="badge badge-yellow">Klik kata → KBBI</div>
+    </div>
+
+    <!-- Favorit panel -->
+    <div id="favPanel"></div>
+
+    <!-- Comeback panel -->
+    <div id="comebackPanel" style="display:none"></div>
+
+    <div class="divider" id="mainDivider"></div>
+
+    <!-- History -->
+    <div class="history-wrap" id="historyWrap" style="display:none">
+      <div class="history-label">Terakhir dicari</div>
+      <div class="history-chips" id="historyChips"></div>
+      <div class="divider" style="margin-top:14px; margin-bottom:0"></div>
+    </div>
+
+    <!-- Abjad bar -->
+    <div id="abjadBar" style="display:none">
+      <div style="margin-top:14px">
+        <div class="abjad-wrap" id="abjadWrap"></div>
+      </div>
+      <div class="divider" style="margin-top:12px; margin-bottom:0"></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" id="toolbar" style="display:none; margin-top:14px">
+      <div class="toolbar-left">
+        <div class="result-count">Ditemukan <span id="resultCount">0</span> kata</div>
+      </div>
+      <div class="toolbar-right">
+        <button class="sort-btn" id="sortBtn" onclick="toggleSort()" title="Urutkan">↕ Panjang</button>
+        <button class="fav-toggle" id="rareBtn" onclick="toggleRare()" title="Kata jarang">☠ Jarang</button>
+        <button class="copy-all-btn" id="copyAllBtn" onclick="copyAll()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Salin
+        </button>
+      </div>
+    </div>
+
+    <div id="results" style="margin-top:10px">
+      <div class="empty-state"><div class="empty-icon">🔍</div>Mulai ketik untuk mencari kata...</div>
+    </div>
+  </div>
+
+  <footer>
+    <p class="footer-note">Klik kata untuk membuka di <a href="https://kbbi.kemendikdasmen.go.id" target="_blank">KBBI Online</a></p>
+  </footer>
+</div>
+
+<script>
+const CSV_URL = 'https://raw.githubusercontent.com/aryakdaniswara/kbbi-v6-full-csv/main/kbbi_v6.1.0_full.csv';
+const JSON_URL = './sambung_kata_database.json';
+
+let words = [];
+let mode = 'awalan';
+let activeAbjad = null;
+let currentFound = [];
+let sortMode = 'default'; // default | asc | desc
+let showRareOnly = false;
+let favorites = JSON.parse(localStorage.getItem('samkat_favs') || '[]');
+let searchHistory = JSON.parse(localStorage.getItem('samkat_history') || '[]');
+
+// Prefix index untuk pencarian O(1) — dibangun sekali setelah data load
+let prefixIndex = {};
+function buildPrefixIndex() {
+  prefixIndex = {};
+  for (const w of words) {
+    const wl = w.toLowerCase();
+    for (let i = 1; i <= Math.min(wl.length, 8); i++) {
+      const key = wl.slice(0, i);
+      if (!prefixIndex[key]) prefixIndex[key] = [];
+      prefixIndex[key].push(w);
+    }
+  }
+}
+
+// Suffix index untuk akhiran
+let suffixIndex = {};
+function buildSuffixIndex() {
+  suffixIndex = {};
+  for (const w of words) {
+    const wl = w.toLowerCase();
+    for (let i = 1; i <= Math.min(wl.length, 8); i++) {
+      const key = wl.slice(-i);
+      if (!suffixIndex[key]) suffixIndex[key] = [];
+      suffixIndex[key].push(w);
+    }
+  }
+}
+
+// Counter cache untuk rare detection — pakai prefixIndex, jauh lebih cepat
+function getCounterCount(word) {
+  const wl = word.toLowerCase();
+  // Ambil dari prefixIndex dengan key = kata itu sendiri (prefix penuh)
+  const key = wl.slice(0, Math.min(wl.length, 8));
+  const candidates = prefixIndex[key] || [];
+  return candidates.filter(w => w.toLowerCase().startsWith(wl)).length;
+}
+
+// Debounce helper
+let _searchTimer = null;
+function debounce(fn, delay) {
+  return function(...args) {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+async function loadData() {
+  let csvWords = [], jsonWords = [];
+  try {
+    const csvData = await new Promise(resolve => {
+      Papa.parse(CSV_URL, { download:true, header:true, skipEmptyLines:true, complete:r=>resolve(r.data), error:()=>resolve([]) });
+    });
+    if (csvData.length) {
+      const c = Object.keys(csvData[0]||{})[0];
+      csvWords = csvData.map(r=>String(r[c]||'').trim()).filter(Boolean);
+    }
+  } catch(e){}
+  try { const r=await fetch(JSON_URL); jsonWords=await r.json(); } catch(e){}
+  words = [...new Set([...csvWords,...(jsonWords||[]).map(v=>String(v).trim())])].filter(w=>Boolean(w)&&!w.includes(' ')).sort((a,b)=>a.localeCompare(b,'id'));
+  buildPrefixIndex();
+  buildSuffixIndex();
+  document.getElementById('statTotal').textContent = '📚 '+words.length.toLocaleString('id-ID')+' kosakata';
+}
+loadData();
+
+// Save helpers
+function saveFavs() { localStorage.setItem('samkat_favs', JSON.stringify(favorites)); }
+function saveHistory() { localStorage.setItem('samkat_history', JSON.stringify(searchHistory)); }
+
+function addHistory(term) {
+  if (!term || term.length < 2) return;
+  searchHistory = [term, ...searchHistory.filter(h=>h!==term)].slice(0, 10);
+  saveHistory();
+  renderHistory();
+}
+
+function renderHistory() {
+  const wrap = document.getElementById('historyWrap');
+  const chips = document.getElementById('historyChips');
+  if (!searchHistory.length || mode === 'favorit') { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  chips.innerHTML = searchHistory.map((h,i) => `
+    <div class="history-chip" onclick="applyHistory('${h}')">
+      ${h}
+      <span class="del" onclick="removeHistory(event,${i})">×</span>
+    </div>`).join('');
+}
+
+function applyHistory(term) {
+  const inp = document.getElementById('q-awalan') || document.getElementById('q-akhiran');
+  if (!inp) return;
+  inp.value = term;
+  inp.dispatchEvent(new Event('input'));
+}
+
+function removeHistory(e, idx) {
+  e.stopPropagation();
+  searchHistory.splice(idx,1);
+  saveHistory();
+  renderHistory();
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    mode = tab.dataset.mode;
+
+    const inputRow = document.getElementById('inputRow');
+    const statsBar = document.getElementById('statsBar');
+    const favPanel = document.getElementById('favPanel');
+    const mainDivider = document.getElementById('mainDivider');
+
+    activeAbjad = null;
+    showRareOnly = false;
+    document.getElementById('rareBtn').classList.remove('active');
+    sortMode = 'default';
+    document.getElementById('sortBtn').classList.remove('active');
+
+    if (mode === 'comeback') {
+      inputRow.style.display = 'none';
+      statsBar.style.display = 'none';
+      mainDivider.style.display = 'none';
+      document.getElementById('historyWrap').style.display = 'none';
+      document.getElementById('abjadBar').style.display = 'none';
+      document.getElementById('toolbar').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      favPanel.style.display = 'none';
+      document.getElementById('comebackPanel').style.display = 'block';
+      renderComebackPanel();
+      return;
+    }
+
+    document.getElementById('comebackPanel').style.display = 'none';
+      inputRow.style.display = 'none';
+      statsBar.style.display = 'none';
+      mainDivider.style.display = 'none';
+      document.getElementById('historyWrap').style.display = 'none';
+      document.getElementById('abjadBar').style.display = 'none';
+      document.getElementById('toolbar').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      favPanel.style.display = 'block';
+      renderFavPanel();
+      return;
+    }
+
+    favPanel.style.display = 'none';
+    document.getElementById('comebackPanel').style.display = 'none';
+    inputRow.style.display = '';
+    statsBar.style.display = '';
+    mainDivider.style.display = '';
+    document.getElementById('results').style.display = '';
+
+    if (mode === 'keduanya') {
+      inputRow.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="input-wrap"><span class="input-label">Awalan</span><input type="text" id="q-awalan" placeholder="contoh: a, ber..."></div>
+          <div class="input-wrap"><span class="input-label">Akhiran</span><input type="text" id="q-akhiran" placeholder="contoh: an, kan..."></div>
+        </div>`;
+    } else {
+      const label = mode==='awalan'?'Awalan':'Akhiran';
+      const id = mode==='awalan'?'q-awalan':'q-akhiran';
+      const ph = mode==='awalan'?'contoh: a, ber, me...':'contoh: an, kan, nya...';
+      inputRow.innerHTML = `
+        <div class="input-with-mic">
+          <div class="input-wrap" style="flex:1"><span class="input-label">${label}</span><input type="text" id="${id}" placeholder="${ph}"></div>
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Cari pakai suara">🎤</button>
+        </div>`;
+    }
+
+    attachInputListeners();
+    clearResults();
+    renderHistory();
+  });
+});
+
+function attachInputListeners() {
+  const debouncedSearch = debounce(doSearch, 120);
+  document.querySelectorAll('#inputRow input').forEach(inp => {
+    inp.addEventListener('input', debouncedSearch);
+  });
+}
+
+function doSearch() {
+  const awal = (document.getElementById('q-awalan')?.value||'').toLowerCase().trim();
+  const akhir = (document.getElementById('q-akhiran')?.value||'').toLowerCase().trim();
+
+  const query = awal || akhir;
+  if (query.length >= 2) addHistory(query);
+
+  if (!awal && !akhir) { clearResults(); return; }
+
+  let found;
+
+  // Gunakan index untuk pencarian cepat
+  if (mode === 'awalan' && awal) {
+    const key = awal.slice(0, Math.min(awal.length, 8));
+    const candidates = prefixIndex[key] || [];
+    found = awal.length <= 8
+      ? candidates.filter(w => w.toLowerCase().startsWith(awal))
+      : candidates.filter(w => w.toLowerCase().startsWith(awal));
+  } else if (mode === 'akhiran' && akhir) {
+    const key = akhir.slice(-Math.min(akhir.length, 8));
+    const candidates = suffixIndex[key] || [];
+    found = candidates.filter(w => w.toLowerCase().endsWith(akhir));
+  } else if (mode === 'keduanya') {
+    if (awal && akhir) {
+      const key = awal.slice(0, Math.min(awal.length, 8));
+      const candidates = prefixIndex[key] || [];
+      found = candidates.filter(w => {
+        const wl = w.toLowerCase();
+        return wl.startsWith(awal) && wl.endsWith(akhir);
+      });
+    } else if (awal) {
+      const key = awal.slice(0, Math.min(awal.length, 8));
+      const candidates = prefixIndex[key] || [];
+      found = candidates.filter(w => w.toLowerCase().startsWith(awal));
+    } else if (akhir) {
+      const key = akhir.slice(-Math.min(akhir.length, 8));
+      const candidates = suffixIndex[key] || [];
+      found = candidates.filter(w => w.toLowerCase().endsWith(akhir));
+    } else {
+      found = [];
+    }
+  } else {
+    found = [];
+  }
+
+  // Abjad (akhiran only)
+  const abjadBar = document.getElementById('abjadBar');
+  if (mode==='akhiran') {
+    const avail = new Set(found.map(w=>w[0].toUpperCase()));
+    renderAbjad(avail);
+    abjadBar.style.display = found.length ? 'block' : 'none';
+  } else {
+    abjadBar.style.display = 'none';
+    activeAbjad = null;
+  }
+  if (activeAbjad) found = found.filter(w=>w[0].toUpperCase()===activeAbjad);
+
+  // Rare filter
+  if (showRareOnly) found = found.filter(w => getCounterCount(w) <= 5);
+
+  // Sort
+  if (sortMode==='asc') found = [...found].sort((a,b)=>a.length-b.length);
+  else if (sortMode==='desc') found = [...found].sort((a,b)=>b.length-a.length);
+
+  currentFound = found;
+  found = found.slice(0, 200);
+
+  document.getElementById('resultCount').textContent = currentFound.length;
+  document.getElementById('toolbar').style.display = currentFound.length ? 'flex' : 'none';
+
+  if (!found.length) {
+    document.getElementById('results').innerHTML = `<div class="empty-state"><div class="empty-icon">😶</div>Kata tidak ditemukan</div>`;
+    return;
+  }
+
+  function hl(word) {
+    const wl = word.toLowerCase();
+    if (mode==='awalan' && awal && wl.startsWith(awal))
+      return `<span class="highlight">${word.slice(0,awal.length)}</span>${word.slice(awal.length)}`;
+    if (mode==='akhiran' && akhir && wl.endsWith(akhir)) {
+      const s=word.length-akhir.length;
+      return `${word.slice(0,s)}<span class="highlight">${word.slice(s)}</span>`;
+    }
+    if (mode==='keduanya') {
+      if (awal && wl.startsWith(awal) && akhir && wl.endsWith(akhir) && awal.length+akhir.length<=word.length) {
+        const mid=word.slice(awal.length,word.length-akhir.length);
+        return `<span class="highlight">${word.slice(0,awal.length)}</span>${mid}<span class="highlight">${word.slice(word.length-akhir.length)}</span>`;
+      }
+      if (awal && wl.startsWith(awal)) return `<span class="highlight">${word.slice(0,awal.length)}</span>${word.slice(awal.length)}`;
+      if (akhir && wl.endsWith(akhir)) { const s=word.length-akhir.length; return `${word.slice(0,s)}<span class="highlight">${word.slice(s)}</span>`; }
+    }
+    return word;
+  }
+
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '';
+  found.forEach((w,i) => {
+    const isFav = favorites.includes(w);
+    const isRare = getCounterCount(w) <= 5;
+    const d = document.createElement('div');
+    d.className = 'item' + (isFav?' favorited':'');
+    d.style.animationDelay = (i*8)+'ms';
+    d.innerHTML = `
+      <span class="fav-star" onclick="toggleFav(event,'${w}')">${isFav?'⭐':'☆'}</span>
+      <div class="word-text">${hl(w)}</div>
+      ${isRare?'<div class="rare-badge">☠ jarang</div>':''}
+      <div class="word-meta">${w[0].toUpperCase()}···${w[w.length-1].toUpperCase()} · ${w.length} huruf</div>`;
+    d.onclick = () => window.open('https://kbbi.kemendikdasmen.go.id/entri/'+encodeURIComponent(w),'_blank');
+    resultsEl.appendChild(d);
+  });
+}
+
+function renderAbjad(availableLetters) {
+  const wrap = document.getElementById('abjadWrap');
+  wrap.innerHTML = '';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+    const btn = document.createElement('button');
+    btn.className = 'abjad-btn'+(activeAbjad===letter?' active':'');
+    btn.textContent = letter;
+    if (!availableLetters.has(letter)) btn.disabled = true;
+    else btn.onclick = ()=>{ activeAbjad = activeAbjad===letter?null:letter; doSearch(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function clearResults() {
+  document.getElementById('results').innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div>Mulai ketik untuk mencari kata...</div>`;
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('abjadBar').style.display = 'none';
+  activeAbjad = null;
+}
+
+// Sort
+function toggleSort() {
+  const btn = document.getElementById('sortBtn');
+  if (sortMode==='default') { sortMode='asc'; btn.textContent='↑ Terpendek'; btn.classList.add('active'); }
+  else if (sortMode==='asc') { sortMode='desc'; btn.textContent='↓ Terpanjang'; }
+  else { sortMode='default'; btn.textContent='↕ Panjang'; btn.classList.remove('active'); }
+  doSearch();
+}
+
+// Rare
+function toggleRare() {
+  showRareOnly = !showRareOnly;
+  document.getElementById('rareBtn').classList.toggle('active', showRareOnly);
+  doSearch();
+}
+
+// Favorit
+function toggleFav(e, word) {
+  e.stopPropagation();
+  if (favorites.includes(word)) favorites = favorites.filter(f=>f!==word);
+  else favorites.push(word);
+  saveFavs();
+  doSearch();
+}
+
+function renderFavPanel() {
+  const panel = document.getElementById('favPanel');
+  if (!favorites.length) {
+    panel.innerHTML = `<div class="fav-empty">⭐<br><br>Belum ada favorit.<br>Klik ☆ di kartu kata untuk simpan.</div>`;
+    return;
+  }
+  panel.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">${favorites.length} kata favorit</div>
+      <button onclick="clearFavs()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">Hapus Semua</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
+      ${favorites.map(w=>`
+        <div class="item favorited" style="animation:none">
+          <span class="fav-star" onclick="removeFavDirect('${w}')">⭐</span>
+          <div class="word-text">${w}</div>
+          <div class="word-meta">${w[0].toUpperCase()}···${w[w.length-1].toUpperCase()} · ${w.length} huruf</div>
+        </div>`).join('')}
+    </div>`;
+  panel.querySelectorAll('.item').forEach((el,i) => {
+    const w = favorites[i];
+    el.onclick = (e) => { if(e.target.classList.contains('fav-star'))return; window.open('https://kbbi.kemendikdasmen.go.id/entri/'+encodeURIComponent(w),'_blank'); };
+  });
+}
+
+function removeFavDirect(word) {
+  favorites = favorites.filter(f=>f!==word);
+  saveFavs();
+  renderFavPanel();
+}
+
+function clearFavs() {
+  favorites = [];
+  saveFavs();
+  renderFavPanel();
+}
+
+// Copy all
+function copyAll() {
+  if (!currentFound.length) return;
+  navigator.clipboard.writeText(currentFound.join('\n')).then(()=>{
+    const btn = document.getElementById('copyAllBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tersalin!`;
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Salin`; }, 2000);
+  });
+}
+
+// Mic / Voice Search
+let recognition = null;
+let isListening = false;
+
+function toggleMic() {
+  const btn = document.getElementById('micBtn');
+  if (!btn) return;
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Browser kamu tidak support pencarian suara. Coba pakai Chrome.');
+    return;
+  }
+  if (isListening) {
+    recognition?.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'id-ID';
+  recognition.interimResults = false;
+  recognition.onstart = () => { isListening=true; btn.classList.add('listening'); btn.textContent='🔴'; };
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.toLowerCase().trim().split(' ')[0];
+    const inp = document.getElementById('q-awalan') || document.getElementById('q-akhiran');
+    if (inp) { inp.value=transcript; inp.dispatchEvent(new Event('input')); }
+  };
+  recognition.onerror = recognition.onend = () => { isListening=false; if(btn){btn.classList.remove('listening');btn.textContent='🎤';} };
+  recognition.start();
+}
+
+// ── COMEBACK ──────────────────────────────────────────────────────────────────
+
+let comebackGameMode = 'normal';
+
+function renderComebackPanel() {
+  const panel = document.getElementById('comebackPanel');
+  panel.innerHTML = `
+    <div class="comeback-input-wrap">
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">
+        ⚡ KATA COMEBACK — Masukkan spawn yang kamu dapat
+      </div>
+      <div class="comeback-mode-row">
+        <button class="comeback-mode-btn ${comebackGameMode==='normal'?'active':''}" onclick="setComebackMode('normal')">Normal (spawn 2)</button>
+        <button class="comeback-mode-btn ${comebackGameMode==='brutal'?'active':''}" onclick="setComebackMode('brutal')">Brutal (spawn 2–5)</button>
+      </div>
+      <div class="input-wrap">
+        <span class="input-label">Spawn yang kamu dapat</span>
+        <input type="text" id="q-comeback" placeholder="contoh: me, ing, ber, nggi...">
+      </div>
+    </div>
+    <div id="comeback-results">
+      <div class="comeback-empty"><div class="empty-icon">⚡</div>Ketik spawn yang kamu dapat...</div>
+    </div>`;
+  document.getElementById('q-comeback').addEventListener('input', debounce(doComeback, 180));
+}
+
+function setComebackMode(m) {
+  comebackGameMode = m;
+  const val = document.getElementById('q-comeback')?.value || '';
+  renderComebackPanel();
+  const inp = document.getElementById('q-comeback');
+  if (inp) { inp.value = val; if (val.trim().length >= 2) doComeback(); }
+}
+
+function scoreWord(word) {
+  const wl = word.toLowerCase();
+  const lengthScore = Math.min(word.length / 15, 1);
+  const maxSpawn = comebackGameMode === 'normal' ? 2 : 5;
+  let totalDifficulty = 0, spawnCount = 0;
+  const spawnDetails = [];
+  for (let i = 2; i <= Math.min(maxSpawn, wl.length); i++) {
+    const spawn = wl.slice(-i);
+    const key = spawn.slice(0, Math.min(spawn.length, 8));
+    const candidates = prefixIndex[key] || [];
+    const counterCount = candidates.filter(w => w.toLowerCase().startsWith(spawn)).length;
+    const difficulty = 1 / Math.log(counterCount + 2);
+    totalDifficulty += difficulty;
+    spawnCount++;
+    spawnDetails.push({ spawn, counterCount });
+  }
+  const avgDifficulty = spawnCount > 0 ? totalDifficulty / spawnCount : 0;
+  const finalScore = (lengthScore * 0.5) + (avgDifficulty * 0.5);
+  return { score: finalScore, lengthScore, avgDifficulty, spawnDetails };
+}
+
+function doComeback() {
+  const input = (document.getElementById('q-comeback')?.value || '').toLowerCase().trim();
+  const container = document.getElementById('comeback-results');
+  if (!container) return;
+  if (!input || input.length < 2) {
+    container.innerHTML = `<div class="comeback-empty"><div class="empty-icon">⚡</div>Ketik spawn yang kamu dapat...</div>`;
+    return;
+  }
+  if (!words.length) {
+    container.innerHTML = `<div class="comeback-loading">⟳ Database belum selesai dimuat...</div>`;
+    return;
+  }
+  const key = input.slice(0, Math.min(input.length, 8));
+  const candidates = (prefixIndex[key] || []).filter(w => w.toLowerCase().startsWith(input));
+  if (!candidates.length) {
+    container.innerHTML = `<div class="comeback-empty"><div class="empty-icon">😶</div>Tidak ada kata berawalan "<b>${input}</b>"<br><br><span style="font-size:10px;color:var(--muted)">Spawn ini sangat berbahaya — tidak ada counter di database</span></div>`;
+    return;
+  }
+  container.innerHTML = `<div class="comeback-loading">⚡ Menghitung ${candidates.length.toLocaleString('id-ID')} kandidat...</div>`;
+  setTimeout(() => {
+    const scored = candidates.map(w => ({ word: w, ...scoreWord(w) }));
+    scored.sort((a, b) => b.score - a.score);
+    const top5 = scored.slice(0, 5);
+    const maxScore = top5[0]?.score || 1;
+    let html = `<div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:14px;letter-spacing:1px">
+      TOP 5 dari ${candidates.length.toLocaleString('id-ID')} kandidat · mode ${comebackGameMode}
+    </div>`;
+    top5.forEach((item, i) => {
+      const w = item.word;
+      const pct = Math.round((item.score / maxScore) * 100);
+      const hi = `<span class="highlight">${w.slice(0, input.length)}</span>${w.slice(input.length)}`;
+      const badges = [];
+      const lenCls = w.length >= 10 ? 'good' : w.length >= 7 ? 'warn' : 'bad';
+      badges.push(`<span class="comeback-badge ${lenCls}">${w.length} huruf</span>`);
+      const hardest = [...item.spawnDetails].sort((a,b) => a.counterCount - b.counterCount)[0];
+      if (hardest) {
+        const cc = hardest.counterCount;
+        const cls = cc <= 3 ? 'bad' : cc <= 15 ? 'warn' : 'good';
+        const label = cc === 0 ? '☠ spawn mati' : `···${hardest.spawn.toUpperCase()} → ${cc} counter`;
+        badges.push(`<span class="comeback-badge ${cls}">${label}</span>`);
+      }
+      const rankLabel = i === 0 ? '🥇 TERBAIK' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+      html += `
+        <div class="comeback-card" style="animation-delay:${i*60}ms">
+          <div class="comeback-rank"><span>${rankLabel}</span></div>
+          <div class="comeback-word" onclick="window.open('https://kbbi.kemendikdasmen.go.id/entri/${encodeURIComponent(w)}','_blank')">${hi}</div>
+          <div class="comeback-score-bar">
+            <div class="comeback-bar-bg"><div class="comeback-bar-fill" style="width:${pct}%"></div></div>
+            <div class="comeback-score-label">skor <b>${pct}</b></div>
+          </div>
+          <div class="comeback-meta">${badges.join('')}</div>
+        </div>`;
+    });
+    container.innerHTML = html;
+  }, 0);
+}
+
+// ── END COMEBACK ───────────────────────────────────────────────────────────────
+
+attachInputListeners();
+renderHistory();
+</script>
+</body>
+</html>
